@@ -18,4 +18,6 @@ def generate_stream(prompt: str):
         for line in response.iter_lines():
             if line:
                 data = json.loads(line.decode("utf-8"))
-                yield data.get("response", "")
+                token = data.get("response", "")
+                if token:
+                    yield token

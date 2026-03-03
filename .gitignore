@@ -76,3 +76,7 @@ htmlcov/
 .tmp/
 
 ConversationalAI/
+Code/test.py
+Code/test_ws.html
+Code/ws_test.py
+DockerFile
