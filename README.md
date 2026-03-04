@@ -67,8 +67,8 @@ FitGuide-AI/
 ## Prerequisites
 
 - **Python 3.10+**
-- **Ollama** installed and running locally
-- (Optional) **Docker** if you prefer containerized deployment
+- **Ollama** installed and running locally with `phi3` model
+- **Docker Desktop** (required for microservices / Phase IV deployment)
 
 ---
 
@@ -128,6 +128,9 @@ A successful response will contain a `response` field with the model's reply.
 ---
 
 ## Step 4 – Set Up the Python Environment
+
+> **Note:** Steps 4–6 describe running the original monolith code in `Code/`.
+> For the **microservices deployment** (Phase IV), skip to [Docker Deployment](#docker-deployment-phase-iv--microservices) below.
 
 ### Create and activate a virtual environment
 
@@ -194,9 +197,13 @@ FitGuide:  Great! Here's a 3-day beginner muscle-building plan...
 | Issue | Solution |
 |---|---|
 | `ConnectionError` when sending a message | Make sure Ollama is running (`ollama serve` or the Ollama app). |
-| Model not found | Run `ollama run phi3` to download the model. |
+| Model not found | Run `ollama pull phi3` to download the model. |
 | Port 8000 already in use | Use a different port: `uvicorn main:app --port 8080` |
 | WebSocket connection failed | Ensure you're accessing `http://localhost:8000`, not `https`. |
+| Docker: `unable to get image` | Open Docker Desktop and wait for the engine to fully start. |
+| Docker: `host.docker.internal` refused | Make sure Ollama is running on the host (`ollama serve`). |
+| Docker: model memory error | Close other apps to free RAM; phi3 needs ~3.5 GB. |
+| `docker` command not recognized | Install Docker Desktop and restart your terminal. |
 
 ---
 

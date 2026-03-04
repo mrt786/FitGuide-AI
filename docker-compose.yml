@@ -22,8 +22,6 @@
 #     LLM service inside Docker can reach Ollama on the host.
 # =============================================================================
 
-version: "3.8"
-
 services:
   # ── LLM Service ──────────────────────────────────────────────────
   # Wraps Ollama with a clean streaming JSON API.
