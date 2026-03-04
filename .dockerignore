@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+*.md
+.venv
+ConversationalAI/
+venv/
+.env
+a2.pdf

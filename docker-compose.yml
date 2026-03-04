@@ -1,0 +1,103 @@
+# =============================================================================
+# FitGuide AI — Docker Compose (Microservices Architecture)
+# =============================================================================
+#
+# Architecture:
+#   Browser → gateway_service (port 8000)
+#              → conversation_service (port 8002, internal)
+#                 → llm_service (port 8001, internal)
+#                    → Ollama (host machine, port 11434)
+#
+# Why Docker Compose?
+#   - Defines the entire multi-service stack declaratively.
+#   - Creates an internal Docker network so services communicate by name
+#     (e.g., "http://llm_service:8001") without exposing internal ports.
+#   - One command to start/stop everything: docker compose up / down.
+#   - Each service has its own Dockerfile, dependencies, and scaling config.
+#
+# Ollama runs on the HOST machine (not in Docker) because:
+#   - It needs direct access to CPU/GPU resources for inference.
+#   - It's a long-running daemon that you typically install system-wide.
+#   - Docker's extra_hosts maps "host.docker.internal" → host IP so the
+#     LLM service inside Docker can reach Ollama on the host.
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # ── LLM Service ──────────────────────────────────────────────────
+  # Wraps Ollama with a clean streaming JSON API.
+  # Only the conversation_service talks to this; not exposed to the browser.
+  llm_service:
+    build:
+      context: ./services/llm_service
+      dockerfile: Dockerfile
+    container_name: fitguide-llm-service
+    ports:
+      - "8001:8001"              # Exposed for debugging; optional in prod
+    environment:
+      # host.docker.internal lets containers reach the host's Ollama
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - MODEL_NAME=phi3:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - fitguide-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Conversation Service ─────────────────────────────────────────
+  # Session management, prompt orchestration, history tracking.
+  # Calls llm_service internally — no direct Ollama dependency.
+  conversation_service:
+    build:
+      context: ./services/conversation_service
+      dockerfile: Dockerfile
+    container_name: fitguide-conversation-service
+    ports:
+      - "8002:8002"              # Exposed for debugging; optional in prod
+    environment:
+      - LLM_SERVICE_URL=http://llm_service:8001
+    depends_on:
+      - llm_service
+    networks:
+      - fitguide-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Gateway Service ──────────────────────────────────────────────
+  # Public-facing: WebSocket endpoint + serves the chat frontend.
+  # Only port 8000 needs to be exposed to the browser.
+  gateway_service:
+    build:
+      context: ./services/gateway_service
+      dockerfile: Dockerfile
+    container_name: fitguide-gateway
+    ports:
+      - "8000:8000"              # The only port users connect to
+    environment:
+      - CONVERSATION_SERVICE_URL=http://conversation_service:8002
+    depends_on:
+      - conversation_service
+    networks:
+      - fitguide-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ── Network ──────────────────────────────────────────────────────────
+# Internal bridge network — services resolve each other by container name.
+networks:
+  fitguide-network:
+    driver: bridge
