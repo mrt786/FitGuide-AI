@@ -282,24 +282,99 @@ docker compose down
 
 ### Running Individual Services (without Docker)
 
-You can also run each service directly for development:
+**Recommended for development!** Run each service directly without containers.
+
+#### Prerequisites
+
+- Python 3.10+ installed and in PATH
+- Ollama running in the background (`ollama serve`)
+
+#### Setup Python Environment (First time only)
+
+```powershell
+# Navigate to the project root
+cd path\to\FitGuide-AI
+
+# Create a virtual environment
+python -m venv venv
+
+# Activate it (Windows)
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies for all services
+pip install -r requirements.txt
+cd services\llm_service && pip install -r requirements.txt
+cd ..\conversation_service && pip install -r requirements.txt
+cd ..\gateway_service && pip install -r requirements.txt
+```
+
+#### Quick Start (Windows PowerShell)
+
+**Open 4 separate PowerShell terminals and run from the project root:**
+
+**Terminal 1: Ollama (keep running)**
+```powershell
+ollama serve
+```
+
+**Terminal 2: LLM Service (port 8001)**
+```powershell
+cd services\llm_service
+python main.py
+```
+
+**Terminal 3: Conversation Service (port 8002)**
+```powershell
+cd services\conversation_service
+python main.py
+```
+
+**Terminal 4: Gateway Service (port 8000)**
+```powershell
+cd services\gateway_service
+python main.py
+```
+
+Then open **http://localhost:8000** in your browser.
+
+#### Quick Start (macOS / Linux Bash)
+
+**Setup (one time):**
+```bash
+cd path/to/FitGuide-AI
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cd services/llm_service && pip install -r requirements.txt
+cd ../conversation_service && pip install -r requirements.txt
+cd ../gateway_service && pip install -r requirements.txt
+```
+
+**Running (open 4 terminals from project root):**
 
 ```bash
-# Terminal 1: LLM Service
+# Terminal 1: Ollama
+ollama serve
+
+# Terminal 2: LLM Service
 cd services/llm_service
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+python main.py
 
-# Terminal 2: Conversation Service
+# Terminal 3: Conversation Service
 cd services/conversation_service
-pip install -r requirements.txt
-LLM_SERVICE_URL=http://localhost:8001 uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+python main.py
 
-# Terminal 3: Gateway Service
+# Terminal 4: Gateway Service
 cd services/gateway_service
-pip install -r requirements.txt
-CONVERSATION_SERVICE_URL=http://localhost:8002 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python main.py
 ```
+
+#### Troubleshooting
+
+- **Port already in use?** Kill all Python: `taskkill /F /IM python.exe` (Windows) or `killall python` (macOS/Linux)
+- **Module not found?** Ensure environment is activated: `source venv/bin/activate` (macOS/Linux) or `.\venv\Scripts\Activate.ps1` (Windows)
+- **Python not found?** Install Python 3.10+ from [python.org](https://www.python.org). Ensure "Add to PATH" is checked during installation.
+- **Ollama not found?** Install from [ollama.ai](https://ollama.ai)
 
 ---
 
