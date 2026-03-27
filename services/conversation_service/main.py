@@ -274,3 +274,8 @@ async def delete_session(session_id: str):
         logger.info(f"Deleted session: {session_id}")
         return {"status": "deleted", "session_id": session_id}
     raise HTTPException(status_code=404, detail="Session not found")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8002)

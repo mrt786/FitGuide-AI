@@ -14,9 +14,9 @@ Why a separate gateway?
   - Decouples the transport protocol (WebSocket) from the business layer.
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, File, UploadFile
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import aiohttp
@@ -44,6 +44,9 @@ app.add_middleware(
 # ── Configuration ──────────────────────────────────────────────────
 CONVERSATION_SERVICE_URL = os.getenv(
     "CONVERSATION_SERVICE_URL", "http://localhost:8002"
+)
+LLM_SERVICE_URL = os.getenv(
+    "LLM_SERVICE_URL", "http://localhost:8001"
 )
 
 # ── Static Files (Frontend) ───────────────────────────────────────
@@ -99,6 +102,89 @@ active_connections: dict[str, WebSocket] = {}
 async def get_connections():
     """Returns the number of active WebSocket connections."""
     return {"active_connections": len(active_connections)}
+
+
+# ── Voice Proxy Endpoints ──────────────────────────────────────────
+# Forward voice requests to the LLM service (avoids CORS issues)
+
+@app.post("/transcribe")
+async def transcribe_proxy(file: UploadFile = File(...)):
+    """
+    Proxy endpoint for audio transcription.
+    
+    Forwards the audio file to the LLM Service /transcribe endpoint.
+    No CORS issues since this is same-origin (same as frontend).
+    """
+    try:
+        logger.info(f"Gateway: Forwarding transcription request to LLM Service")
+        
+        # Read file contents
+        contents = await file.read()
+        
+        # Create multipart form data for forwarding
+        form_data = aiohttp.FormData()
+        form_data.add_field('file', contents, filename=file.filename, content_type=file.content_type)
+        
+        # Forward to LLM service
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{LLM_SERVICE_URL}/transcribe",
+                data=form_data,
+                timeout=aiohttp.ClientTimeout(total=60),
+            ) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    logger.error(f"LLM Service transcribe error: {resp.status} - {error_text}")
+                    raise HTTPException(status_code=resp.status, detail=error_text)
+                
+                result = await resp.json()
+                logger.info(f"Gateway: Transcription successful: {result['text'][:100]}...")
+                return result
+    
+    except Exception as e:
+        logger.error(f"Gateway transcription proxy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/synthesize")
+async def synthesize_proxy(request: dict):
+    """
+    Proxy endpoint for text-to-speech synthesis.
+    
+    Forwards the text to the LLM Service /synthesize endpoint.
+    Returns audio file (no CORS issues).
+    """
+    try:
+        logger.info(f"Gateway: Forwarding synthesis request to LLM Service")
+        
+        # Forward to LLM service
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{LLM_SERVICE_URL}/synthesize",
+                json=request,
+                timeout=aiohttp.ClientTimeout(total=30),
+            ) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    logger.error(f"LLM Service synthesize error: {resp.status} - {error_text}")
+                    raise HTTPException(status_code=resp.status, detail=error_text)
+                
+                # Get audio content
+                audio_data = await resp.read()
+                content_type = resp.headers.get('Content-Type', 'audio/mpeg')
+                
+                logger.info(f"Gateway: Synthesis successful, returning {len(audio_data)} bytes")
+                
+                # Return audio file with proper headers
+                return StreamingResponse(
+                    iter([audio_data]),
+                    media_type=content_type,
+                    headers={"Content-Disposition": "inline; filename=response.mp3"}
+                )
+    
+    except Exception as e:
+        logger.error(f"Gateway synthesis proxy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── WebSocket Endpoint ─────────────────────────────────────────────
@@ -195,3 +281,8 @@ async def websocket_chat(websocket: WebSocket):
     finally:
         active_connections.pop(connection_id, None)
         logger.info(f"Connection cleaned up: {connection_id} (total: {len(active_connections)})")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

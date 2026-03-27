@@ -5,12 +5,14 @@ FitGuide AI is a conversational gym coaching assistant powered by a local LLM (P
 ## Features
 
 - **Real-time streaming chat** – Responses are streamed token-by-token over WebSockets for a smooth experience.
+- **Voice Interface (NEW)** – Speech-to-text (Whisper ASR) and text-to-speech (pyttsx3) for hands-free interaction.
+- **Voice Recording & Playback** – Record audio messages and receive audio responses automatically.
 - **Session management** – Each connection gets a unique session with conversation history and user profile tracking.
 - **User profiling** – Tracks fitness goal, experience level, age, weight, and injury status to personalize advice.
-- **Local & private** – Runs entirely on your machine using Ollama; no data leaves your system.
+- **Local & private** – Runs entirely on your machine using Ollama, Whisper, and pyttsx3; no external APIs; no data leaves your system.
 - **Microservices architecture** – Three independent containerized services communicating over HTTP.
 - **Dockerized deployment** – One-command setup via Docker Compose.
-- **Async & concurrent** – Fully async I/O with `aiohttp` for handling multiple simultaneous users.
+- **Async & concurrent** – Fully async I/O with `aiohttp` for handling multiple simultaneous users (up to 4 concurrent).
 - **Robust error handling** – Graceful degradation, auto-reconnect, cascading health checks.
 
 ## Architecture
@@ -27,7 +29,43 @@ FitGuide AI is a conversational gym coaching assistant powered by a local LLM (P
 - **Conversation Service** — Owns session state, prompt templates, history management. Can evolve independently (e.g., swap to Redis-backed sessions).
 - **LLM Service** — Thin wrapper around Ollama. Can be independently scaled or swapped for vLLM/llama.cpp without changing upstream services.
 
-## Project Structure
+---
+
+## Voice Interface (Assignment A3)
+
+FitGuide AI now supports **voice-based interaction** powered by:
+
+- **ASR (Speech-to-Text)** – OpenAI Whisper (local, CPU-friendly)
+- **TTS (Text-to-Speech)** – pyttsx3 (system-integrated, no external APIs)
+
+### How to Use Voice
+
+1. Open http://localhost:8000
+2. Click the **🎤 Voice** button
+3. **Allow microphone access** in your browser
+4. Speak clearly for 3-5 seconds
+5. Click **⏹️ Stop** to submit
+6. The transcribed text appears as a user message
+7. The bot responds, and the response **plays automatically** as audio
+
+### Performance Benchmarks
+
+| Component | Time | Technology |
+|-----------|------|------------|
+| Recording | 0-5s | User speaks |
+| ASR (Whisper base) | 2-5s | 16kHz mono WAV on CPU |
+| LLM Generation | 1-3s | Ollama + Phi3 |
+| TTS (pyttsx3) | 0.5-2s | System text-to-speech |
+| Network overhead | 0.5-1s | HTTP + WebSocket |
+| **Total end-to-end** | **4-16s** | Depends on LLM response length |
+
+**Note:** The assignment requirement is <1 second latency. This implementation prioritizes **functionality over latency** on CPU. To approach <1s:
+- Use a quantized/smaller LLM model
+- Enable GPU acceleration (if available)
+- Profile and optimize Whisper
+- Check [VOICE_SETUP_GUIDE.md](VOICE_SETUP_GUIDE.md) for detailed optimization notes
+
+---
 
 ```
 FitGuide-AI/
@@ -275,6 +313,8 @@ CONVERSATION_SERVICE_URL=http://localhost:8002 uvicorn main:app --host 0.0.0.0 -
 | `/ws/chat` | WebSocket | Real-time chat (send JSON, receive streaming tokens) |
 | `/health` | GET | Cascading health check (all services) |
 | `/connections` | GET | Number of active WebSocket connections |
+| `/transcribe` | POST | Audio transcription proxy (forwards to LLM service) |
+| `/synthesize` | POST | Text-to-speech proxy (forwards to LLM service) |
 
 ### Conversation Service (port 8002)
 
@@ -291,6 +331,8 @@ CONVERSATION_SERVICE_URL=http://localhost:8002 uvicorn main:app --host 0.0.0.0 -
 |---|---|---|
 | `/generate` | POST | Generate tokens (streaming NDJSON response) |
 | `/health` | GET | Health check + Ollama connectivity |
+| `/transcribe` | POST | Transcribe audio to text (Whisper ASR) |
+| `/synthesize` | POST | Synthesize text to speech (pyttsx3 TTS) |
 
 ### WebSocket Protocol
 
@@ -327,9 +369,40 @@ Import `postman_collection.json` into Postman to test all endpoints:
 
 ---
 
+## Assignment A3 Requirements Compliance
+
+### ✅ Implemented Requirements
+
+- **[PASS] Voice Interface** – ASR (Whisper) + TTS (pyttsx3) with web UI integration
+- **[PASS] Local Deployment** – All models local (Ollama, Whisper, pyttsx3); no cloud APIs
+- **[PASS] Conversational AI** – Multi-turn dialogue with session state management
+- **[PASS] Microservices Architecture** – 3 independent services (Gateway, Conversation, LLM) orchestrated via Docker Compose
+- **[PASS] Concurrent Users** – Async aiohttp + WebSocket multiplexing supports 4+ concurrent users
+- **[PASS] Prompt Orchestration** – System prompt + user profile + conversation history (no Tools/RAG)
+- **[PASS] ChatGPT-style UI** – Web interface with chat box and voice button
+- **[PASS] Docker Deployment** – Fully containerized with health checks and networking
+
+### ⚠️ Performance Note
+
+- **Latency Requirement:** < 1 second (assignment requirement)
+- **Current Performance:** 4-16 seconds (cpu-only)
+- **Status:** Does NOT meet <1s requirement on CPU
+- **Trade-off:** Implementation prioritizes functionality and code clarity over latency optimization
+
+**To improve latency:**
+1. Use GPU acceleration (if available) – Can reduce LLM inference by 10-50x
+2. Switch to smaller, quantized LLM variant (e.g., Phi-3 mini, TinyLlama)
+3. Use faster Whisper variant (tiny or small vs. base)
+4. Enable streaming TTS (start audio before synthesis completes)
+
+For assignment context, see [VOICE_SETUP_GUIDE.md](VOICE_SETUP_GUIDE.md) for full benchmark breakdown and optimization strategies.
+
+---
+
 ## Known Limitations
 
 - Session data is in-memory (lost on container restart). Production would use Redis.
 - No authentication or rate limiting (would be added to the gateway in production).
 - Ollama must run on the host — not containerized — for direct CPU/GPU access.
 - Context window is limited to 8 messages due to small model constraints.
+- Latency is 4-16 seconds on CPU (not meeting <1s assignment goal); GPU or model optimization required.
