@@ -431,8 +431,10 @@ async function playResponse(text) {
 
 function stopTTS() {
     const audioElement = document.getElementById("response-audio");
+    const stopButton = document.getElementById("stop-tts-btn");
     audioElement.pause();
     audioElement.currentTime = 0;
+    stopButton.style.display = "none";
     console.log("[TTS] Stopped");
 }
 
@@ -444,6 +446,21 @@ document.addEventListener("DOMContentLoaded", function () {
     audioElement.addEventListener("play", function () {
         stopButton.style.display = "inline-block";
         console.log("[TTS] Playing - stop button visible");
+    });
+
+    audioElement.addEventListener("pause", function () {
+        stopButton.style.display = "none";
+        console.log("[TTS] Paused - stop button hidden");
+    });
+
+    audioElement.addEventListener("ended", function () {
+        stopButton.style.display = "none";
+        console.log("[TTS] Ended - stop button hidden");
+    });
+
+    audioElement.addEventListener("error", function () {
+        stopButton.style.display = "none";
+        console.log("[TTS] Audio error - stop button hidden");
     });
 });
 

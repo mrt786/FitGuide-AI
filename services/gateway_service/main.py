@@ -141,9 +141,17 @@ async def transcribe_proxy(file: UploadFile = File(...)):
                 logger.info(f"Gateway: Transcription successful: {result['text'][:100]}...")
                 return result
     
+    except HTTPException:
+        raise
+    except asyncio.TimeoutError:
+        logger.error("Gateway transcription proxy timeout", exc_info=True)
+        raise HTTPException(status_code=504, detail="LLM transcription request timed out")
+    except aiohttp.ClientError as e:
+        logger.error(f"Gateway transcription proxy connection error: {repr(e)}", exc_info=True)
+        raise HTTPException(status_code=503, detail="Cannot reach LLM transcription service")
     except Exception as e:
-        logger.error(f"Gateway transcription proxy error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Gateway transcription proxy unexpected error: {repr(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Transcription proxy failed: {type(e).__name__}")
 
 
 @app.post("/synthesize")
@@ -182,9 +190,17 @@ async def synthesize_proxy(request: dict):
                     headers={"Content-Disposition": "inline; filename=response.mp3"}
                 )
     
+    except HTTPException:
+        raise
+    except asyncio.TimeoutError:
+        logger.error("Gateway synthesis proxy timeout", exc_info=True)
+        raise HTTPException(status_code=504, detail="LLM synthesis request timed out")
+    except aiohttp.ClientError as e:
+        logger.error(f"Gateway synthesis proxy connection error: {repr(e)}", exc_info=True)
+        raise HTTPException(status_code=503, detail="Cannot reach LLM synthesis service")
     except Exception as e:
-        logger.error(f"Gateway synthesis proxy error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Gateway synthesis proxy unexpected error: {repr(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Synthesis proxy failed: {type(e).__name__}")
 
 
 # ── WebSocket Endpoint ─────────────────────────────────────────────

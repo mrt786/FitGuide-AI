@@ -38,6 +38,7 @@ logger = logging.getLogger("llm_service")
 WHISPER_MODEL = None
 TTS_ENGINE = None
 DEVICE = "cuda" if __import__("torch").cuda.is_available() else "cpu"
+TTS_LOCK = asyncio.Lock()
 
 def load_voice_models():
     """Load Whisper and TTS models on service startup."""
@@ -58,6 +59,17 @@ def load_voice_models():
         logger.info("pyttsx3 TTS engine initialized")
     except Exception as e:
         logger.error(f"Failed to initialize TTS: {e}")
+
+
+def _transcribe_audio_blocking(audio_data: np.ndarray) -> dict:
+    """Runs Whisper transcription in a worker thread."""
+    return WHISPER_MODEL.transcribe(audio_data, language="en")
+
+
+def _synthesize_to_file_blocking(text: str, output_path: str):
+    """Runs pyttsx3 synthesis in a worker thread."""
+    TTS_ENGINE.save_to_file(text, output_path)
+    TTS_ENGINE.runAndWait()
 
 app = FastAPI(title="LLM Service", version="1.0.0")
 
@@ -235,8 +247,8 @@ async def transcribe(file: UploadFile = File(...)):
         
         logger.info(f"Transcribing with Whisper (audio shape: {audio_data.shape})...")
         
-        # Pass numpy array directly to Whisper (no file needed!)
-        result = WHISPER_MODEL.transcribe(audio_data, language="en")
+        # Offload heavy ASR work so event loop stays responsive.
+        result = await asyncio.to_thread(_transcribe_audio_blocking, audio_data)
         
         text = result.get("text", "").strip()
         logger.info(f"Transcription result: '{text}'")
@@ -271,15 +283,18 @@ async def synthesize(request: SynthesizeRequest):
     
     try:
         logger.info(f"Synthesizing text: {request.text[:50]}...")
+
+        if not request.text or not request.text.strip():
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
         
         # Create temp file for output
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
             tmp_path = tmp.name
         
         try:
-            # Synthesize speech using pyttsx3
-            TTS_ENGINE.save_to_file(request.text, tmp_path)
-            TTS_ENGINE.runAndWait()
+            # pyttsx3 is not thread-safe; serialize calls and offload blocking work.
+            async with TTS_LOCK:
+                await asyncio.to_thread(_synthesize_to_file_blocking, request.text, tmp_path)
             
             # Return audio file
             return FileResponse(
@@ -288,7 +303,7 @@ async def synthesize(request: SynthesizeRequest):
                 filename="response.mp3",
                 headers={"Content-Disposition": "inline; filename=response.mp3"},
             )
-        except Exception as e:
+        except Exception:
             # Clean up on error
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
