@@ -83,6 +83,7 @@ services:
       - "8000:8000"              # The only port users connect to
     environment:
       - CONVERSATION_SERVICE_URL=http://conversation_service:8002
+      - LLM_SERVICE_URL=http://llm_service:8001
     depends_on:
       - conversation_service
     networks:

@@ -44,9 +44,9 @@ def load_voice_models():
     """Load Whisper and TTS models on service startup."""
     global WHISPER_MODEL, TTS_ENGINE
     try:
-        logger.info("Loading Whisper ASR model...")
-        WHISPER_MODEL = whisper.load_model("base", device=DEVICE)
-        logger.info(f"Whisper loaded on {DEVICE}")
+        logger.info("Loading Whisper ASR model (tiny)...")
+        WHISPER_MODEL = whisper.load_model("tiny", device=DEVICE)
+        logger.info(f"Whisper tiny model loaded on {DEVICE}")
     except Exception as e:
         logger.error(f"Failed to load Whisper: {e}")
     
