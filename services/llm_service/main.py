@@ -23,6 +23,7 @@ import os
 import io
 import logging
 import tempfile
+import platform
 import whisper
 import pyttsx3
 import scipy.io.wavfile
@@ -52,13 +53,15 @@ def load_voice_models():
     
     try:
         logger.info("Initializing pyttsx3 TTS engine...")
-        TTS_ENGINE = pyttsx3.init()
+        # Force espeak driver on Linux
+        TTS_ENGINE = pyttsx3.init(driverName='espeak' if platform.system() == 'Linux' else None)
         # Set properties for better performance
         TTS_ENGINE.setProperty('rate', 150)  # Speed (words per minute)
         TTS_ENGINE.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
-        logger.info("pyttsx3 TTS engine initialized")
+        logger.info(f"pyttsx3 TTS engine initialized with driver: {TTS_ENGINE.driverName if hasattr(TTS_ENGINE, 'driverName') else 'default'}")
     except Exception as e:
-        logger.error(f"Failed to initialize TTS: {e}")
+        logger.error(f"Failed to initialize TTS: {type(e).__name__}: {e}", exc_info=True)
+        TTS_ENGINE = None
 
 
 def _transcribe_audio_blocking(audio_data: np.ndarray) -> dict:
@@ -67,9 +70,19 @@ def _transcribe_audio_blocking(audio_data: np.ndarray) -> dict:
 
 
 def _synthesize_to_file_blocking(text: str, output_path: str):
-    """Runs pyttsx3 synthesis in a worker thread."""
+    """Runs pyttsx3 synthesis in a worker thread with proper file sync."""
+    import time
     TTS_ENGINE.save_to_file(text, output_path)
     TTS_ENGINE.runAndWait()
+    # Give the system a moment to flush the file to disk
+    time.sleep(0.5)
+    # Verify file was actually created
+    if not os.path.exists(output_path):
+        raise RuntimeError(f"pyttsx3 failed to create output file: {output_path}")
+    file_size = os.path.getsize(output_path)
+    if file_size == 0:
+        raise RuntimeError(f"pyttsx3 created empty file: {output_path}")
+    logger.info(f"pyttsx3 synthesis complete: {output_path} ({file_size} bytes)")
 
 app = FastAPI(title="LLM Service", version="1.0.0")
 
@@ -274,11 +287,12 @@ async def synthesize(request: SynthesizeRequest):
       - speaker: Voice ID (optional, depends on system voices)
     
     Returns:
-      - Audio file (MP3 format on Windows/Mac, WAV on Linux)
+      - Audio file (WAV format on Linux)
     
     Latency: ~0.5-2s for typical sentence (very fast - uses system TTS)
     """
     if TTS_ENGINE is None:
+        logger.error("TTS engine is None - initialization failed")
         raise HTTPException(status_code=503, detail="TTS engine not initialized")
     
     try:
@@ -288,29 +302,38 @@ async def synthesize(request: SynthesizeRequest):
             raise HTTPException(status_code=400, detail="Text cannot be empty")
         
         # Create temp file for output
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp_path = tmp.name
         
         try:
             # pyttsx3 is not thread-safe; serialize calls and offload blocking work.
             async with TTS_LOCK:
+                logger.info(f"Calling TTS synthesis to file: {tmp_path}")
                 await asyncio.to_thread(_synthesize_to_file_blocking, request.text, tmp_path)
             
-            # Return audio file
+            logger.info(f"TTS file ready: {tmp_path}")
+            
+            # Return audio file with proper headers for range requests
             return FileResponse(
                 tmp_path,
-                media_type="audio/mpeg",
-                filename="response.mp3",
-                headers={"Content-Disposition": "inline; filename=response.mp3"},
+                media_type="audio/wav",
+                filename="response.wav",
+                headers={
+                    "Content-Disposition": "inline; filename=response.wav",
+                    "Accept-Ranges": "bytes",
+                },
             )
-        except Exception:
+        except Exception as e:
             # Clean up on error
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
-            raise
+            logger.error(f"TTS file processing error: {type(e).__name__}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
     
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Synthesis error: {e}")
+        logger.error(f"Synthesis error: {type(e).__name__}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
 
 
