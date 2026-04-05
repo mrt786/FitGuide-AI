@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FitGuide AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        🏋️ FitGuide AI – Gym Coaching Assistant
+    </div>
+
+    <div id="chat-box"></div>
+
+    <div id="typing-indicator" class="typing" style="display:none;">
+        FitGuide AI is typing...
+    </div>
+
+    <div class="input-container">
+        <input id="message-input" type="text" placeholder="Type your message or use voice...">
+        <button id="voice-btn" onclick="toggleVoiceRecording()">🎤 Voice</button>
+        <button id="stop-tts-btn" onclick="stopTTS()" style="display:none;" title="Stop bot audio playback">⏹️ Stop Audio</button>
+        <button id="send-btn" onclick="sendMessage()">Send</button>
+        <button id="new-btn" onclick="resetSession()">New</button>
+    </div>
+    
+    <audio id="response-audio" style="display:none;"></audio>
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>

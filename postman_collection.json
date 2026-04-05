@@ -1,0 +1,433 @@
+{
+	"info": {
+		"_postman_id": "fitguide-ai-collection",
+		"name": "FitGuide AI — API Test Collection",
+		"description": "Test collection for FitGuide AI microservices.\n\nCovers:\n- Health checks for all 3 services\n- WebSocket chat endpoint\n- Session management endpoints\n- Error handling scenarios\n\nPrerequisites:\n1. Ollama running with phi3 model\n2. All services running (docker compose up)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Checks",
+			"description": "Verify all microservices are healthy and connected.",
+			"item": [
+				{
+					"name": "Gateway Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8000",
+							"path": ["health"]
+						},
+						"description": "Cascading health check — Gateway → Conversation Service → LLM Service → Ollama."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Gateway is healthy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('healthy');",
+									"    pm.expect(json.gateway).to.eql('ok');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Conversation Service Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8002/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["health"]
+						},
+						"description": "Direct health check for the conversation service."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Conversation service is healthy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('healthy');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "LLM Service Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8001/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8001",
+							"path": ["health"]
+						},
+						"description": "Direct health check for the LLM service — verifies Ollama connectivity."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('LLM service is healthy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.ollama).to.eql('connected');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Chat (Conversation Service Direct)",
+			"description": "Test the conversation service's /chat endpoint directly.",
+			"item": [
+				{
+					"name": "Send Chat Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"session_id\": \"postman-test-session\",\n    \"message\": \"Hi! I'm a beginner and want to build muscle.\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8002/chat",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["chat"]
+						},
+						"description": "Send a chat message directly to the conversation service. Returns a streaming NDJSON response with tokens."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Chat returns 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is NDJSON', function () {",
+									"    pm.expect(pm.response.headers.get('content-type')).to.include('application/x-ndjson');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Send Follow-up Message (Multi-turn)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"session_id\": \"postman-test-session\",\n    \"message\": \"I'm 22 years old and weigh 70 kg. No injuries.\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8002/chat",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["chat"]
+						},
+						"description": "Follow-up message using the same session_id — tests multi-turn context."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Follow-up returns 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Send Empty Message (Error Case)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"session_id\": \"postman-test-session\",\n    \"message\": \"\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8002/chat",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["chat"]
+						},
+						"description": "Edge case — empty message should return 400."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Empty message returns 400', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Session Management",
+			"description": "Test session CRUD operations.",
+			"item": [
+				{
+					"name": "Get Session Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8002/session/postman-test-session",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["session", "postman-test-session"]
+						},
+						"description": "Retrieve session metadata — message count, profile."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Session exists', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.session_id).to.eql('postman-test-session');",
+									"    pm.expect(json.message_count).to.be.above(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Non-existent Session (404)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8002/session/does-not-exist",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["session", "does-not-exist"]
+						},
+						"description": "Should return 404 for unknown sessions."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Non-existent session returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Session",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8002/session/postman-test-session",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8002",
+							"path": ["session", "postman-test-session"]
+						},
+						"description": "Delete a session — used by the 'New Chat' button."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Session deleted', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('deleted');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "LLM Service Direct",
+			"description": "Test the LLM service /generate endpoint directly.",
+			"item": [
+				{
+					"name": "Generate Tokens",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"prompt\": \"Say hello in one sentence.\",\n    \"temperature\": 0.7,\n    \"max_tokens\": 50\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8001/generate",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8001",
+							"path": ["generate"]
+						},
+						"description": "Direct LLM token generation — streaming NDJSON response."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Generate returns 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is NDJSON', function () {",
+									"    pm.expect(pm.response.headers.get('content-type')).to.include('application/x-ndjson');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Gateway Endpoints",
+			"description": "Test gateway-specific endpoints.",
+			"item": [
+				{
+					"name": "Active Connections Count",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/connections",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8000",
+							"path": ["connections"]
+						},
+						"description": "Returns the number of active WebSocket connections."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Connections endpoint works', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('active_connections');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "WebSocket Chat",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "ws://localhost:8000/ws/chat",
+							"protocol": "ws",
+							"host": ["localhost"],
+							"port": "8000",
+							"path": ["ws", "chat"]
+						},
+						"description": "WebSocket endpoint for real-time chat.\n\nTo test in Postman:\n1. Open a new WebSocket request tab\n2. Connect to ws://localhost:8000/ws/chat\n3. Send: {\"session_id\": \"test\", \"message\": \"Hello!\"}\n4. Observe streamed tokens followed by [END]"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

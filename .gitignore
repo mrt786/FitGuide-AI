@@ -1,0 +1,82 @@
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+npm-debug.log
+npm-debug.log*
+yarn-error.log
+
+# Environment Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Model Files (Large)
+models/trigram_model.pkl
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Logs
+error_logs/
+*.log
+logs/
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Temporary Files
+*.tmp
+*.temp
+.tmp/
+
+ConversationalAI/
+Code/test.py
+Code/test_ws.html
+Code/ws_test.py
+DockerFile
