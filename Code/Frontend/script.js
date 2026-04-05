@@ -1,6 +1,10 @@
 let sessionId = generateSessionId();
 let ws = connectWebSocket();
 let currentBotMessage = null;
+<<<<<<< HEAD
+=======
+let responseInProgress = false;
+>>>>>>> 32052ba (pushed the missing files)
 
 function generateSessionId() {
     return Math.random().toString(36).substring(2);
@@ -12,10 +16,27 @@ function connectWebSocket() {
     socket.onmessage = function(event) {
         if (event.data === "[END]") {
             hideTyping();
+<<<<<<< HEAD
+=======
+            setInputEnabled(true);
+            responseInProgress = false;
+>>>>>>> 32052ba (pushed the missing files)
             currentBotMessage = null;
             return;
         }
 
+<<<<<<< HEAD
+=======
+        if (event.data === "[ERROR]") {
+            hideTyping();
+            setInputEnabled(true);
+            responseInProgress = false;
+            currentBotMessage = null;
+            appendMessage("Something went wrong while generating the response.", "bot");
+            return;
+        }
+
+>>>>>>> 32052ba (pushed the missing files)
         if (!currentBotMessage) {
             currentBotMessage = appendMessage("", "bot");
         }
@@ -28,12 +49,22 @@ function connectWebSocket() {
 }
 
 function sendMessage() {
+<<<<<<< HEAD
+=======
+    if (responseInProgress) return;
+
+>>>>>>> 32052ba (pushed the missing files)
     const input = document.getElementById("message-input");
     const message = input.value.trim();
     if (!message) return;
 
     appendMessage(message, "user");
     showTyping();
+<<<<<<< HEAD
+=======
+    responseInProgress = true;
+    setInputEnabled(false);
+>>>>>>> 32052ba (pushed the missing files)
 
     ws.send(JSON.stringify({
         session_id: sessionId,
@@ -69,7 +100,27 @@ function hideTyping() {
     document.getElementById("typing-indicator").style.display = "none";
 }
 
+<<<<<<< HEAD
 function resetSession() {
+=======
+function setInputEnabled(enabled) {
+    const input = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const newButton = document.getElementById("new-button");
+
+    input.disabled = !enabled;
+    sendButton.disabled = !enabled;
+    newButton.disabled = !enabled;
+
+    if (enabled) {
+        input.focus();
+    }
+}
+
+function resetSession() {
+    if (responseInProgress) return;
+
+>>>>>>> 32052ba (pushed the missing files)
     sessionId = generateSessionId();
     document.getElementById("chat-box").innerHTML = "";
 }

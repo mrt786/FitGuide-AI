@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # =============================================================================
 # FitGuide AI — Docker Compose (Microservices Architecture)
 # =============================================================================
@@ -26,10 +27,40 @@ services:
   # ── LLM Service ──────────────────────────────────────────────────
   # Wraps Ollama with a clean streaming JSON API.
   # Only the conversation_service talks to this; not exposed to the browser.
+=======
+services:
+
+  # ─────────────────────────────────────────────
+  # REDIS (STATE STORE)
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: fitguide-redis
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - fitguide-network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─────────────────────────────────────────────
+  # LLM SERVICE
+  # ─────────────────────────────────────────────
+>>>>>>> 32052ba (pushed the missing files)
   llm_service:
     build:
       context: ./services/llm_service
       dockerfile: Dockerfile
+<<<<<<< HEAD
     container_name: fitguide-llm-service
     ports:
       - "8001:8001"              # Exposed for debugging; optional in prod
@@ -51,10 +82,44 @@ services:
   # ── Conversation Service ─────────────────────────────────────────
   # Session management, prompt orchestration, history tracking.
   # Calls llm_service internally — no direct Ollama dependency.
+=======
+      cache_from:
+        - fitguide-llm-service:latest
+    image: fitguide-llm-service:latest
+    container_name: fitguide-llm-service
+
+    ports:
+      - "8001:8001"
+
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - MODEL_NAME=phi3:latest
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    networks:
+      - fitguide-network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+  # ─────────────────────────────────────────────
+  # CONVERSATION SERVICE
+  # ─────────────────────────────────────────────
+>>>>>>> 32052ba (pushed the missing files)
   conversation_service:
     build:
       context: ./services/conversation_service
       dockerfile: Dockerfile
+<<<<<<< HEAD
     container_name: fitguide-conversation-service
     ports:
       - "8002:8002"              # Exposed for debugging; optional in prod
@@ -74,10 +139,48 @@ services:
   # ── Gateway Service ──────────────────────────────────────────────
   # Public-facing: WebSocket endpoint + serves the chat frontend.
   # Only port 8000 needs to be exposed to the browser.
+=======
+      cache_from:
+        - fitguide-conversation-service:latest
+    image: fitguide-conversation-service:latest
+    container_name: fitguide-conversation-service
+
+    ports:
+      - "8002:8002"
+
+    environment:
+      - LLM_SERVICE_URL=http://llm_service:8001
+      - REDIS_URL=redis://redis:6379/0
+      - SESSION_TTL_SECONDS=86400
+
+    depends_on:
+      llm_service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - fitguide-network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+  # ─────────────────────────────────────────────
+  # GATEWAY SERVICE (PUBLIC ENTRY)
+  # ─────────────────────────────────────────────
+>>>>>>> 32052ba (pushed the missing files)
   gateway_service:
     build:
       context: ./services/gateway_service
       dockerfile: Dockerfile
+<<<<<<< HEAD
     container_name: fitguide-gateway
     ports:
       - "8000:8000"              # The only port users connect to
@@ -100,3 +203,40 @@ services:
 networks:
   fitguide-network:
     driver: bridge
+=======
+      cache_from:
+        - fitguide-gateway:latest
+    image: fitguide-gateway:latest
+    container_name: fitguide-gateway
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      - CONVERSATION_SERVICE_URL=http://conversation_service:8002
+      - LLM_SERVICE_URL=http://llm_service:8001
+
+    depends_on:
+      conversation_service:
+        condition: service_healthy
+
+    networks:
+      - fitguide-network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+# ─────────────────────────────────────────────
+# NETWORK
+# ─────────────────────────────────────────────
+networks:
+  fitguide-network:
+    driver: bridge
+>>>>>>> 32052ba (pushed the missing files)

@@ -103,6 +103,15 @@ button:active {
     transform: scale(0.98);
 }
 
+<<<<<<< HEAD
+=======
+button:disabled,
+input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+>>>>>>> 32052ba (pushed the missing files)
 #voice-btn {
     background: #16a34a;
 }

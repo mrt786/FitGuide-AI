@@ -23,7 +23,10 @@ import os
 import io
 import logging
 import tempfile
+<<<<<<< HEAD
 import platform
+=======
+>>>>>>> 32052ba (pushed the missing files)
 import whisper
 import pyttsx3
 import scipy.io.wavfile
@@ -53,6 +56,7 @@ def load_voice_models():
     
     try:
         logger.info("Initializing pyttsx3 TTS engine...")
+<<<<<<< HEAD
         # Force espeak driver on Linux
         TTS_ENGINE = pyttsx3.init(driverName='espeak' if platform.system() == 'Linux' else None)
         # Set properties for better performance
@@ -62,6 +66,15 @@ def load_voice_models():
     except Exception as e:
         logger.error(f"Failed to initialize TTS: {type(e).__name__}: {e}", exc_info=True)
         TTS_ENGINE = None
+=======
+        TTS_ENGINE = pyttsx3.init()
+        # Set properties for better performance
+        TTS_ENGINE.setProperty('rate', 150)  # Speed (words per minute)
+        TTS_ENGINE.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
+        logger.info("pyttsx3 TTS engine initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize TTS: {e}")
+>>>>>>> 32052ba (pushed the missing files)
 
 
 def _transcribe_audio_blocking(audio_data: np.ndarray) -> dict:
@@ -70,6 +83,7 @@ def _transcribe_audio_blocking(audio_data: np.ndarray) -> dict:
 
 
 def _synthesize_to_file_blocking(text: str, output_path: str):
+<<<<<<< HEAD
     """Runs pyttsx3 synthesis in a worker thread with proper file sync."""
     import time
     TTS_ENGINE.save_to_file(text, output_path)
@@ -83,6 +97,11 @@ def _synthesize_to_file_blocking(text: str, output_path: str):
     if file_size == 0:
         raise RuntimeError(f"pyttsx3 created empty file: {output_path}")
     logger.info(f"pyttsx3 synthesis complete: {output_path} ({file_size} bytes)")
+=======
+    """Runs pyttsx3 synthesis in a worker thread."""
+    TTS_ENGINE.save_to_file(text, output_path)
+    TTS_ENGINE.runAndWait()
+>>>>>>> 32052ba (pushed the missing files)
 
 app = FastAPI(title="LLM Service", version="1.0.0")
 
@@ -287,12 +306,19 @@ async def synthesize(request: SynthesizeRequest):
       - speaker: Voice ID (optional, depends on system voices)
     
     Returns:
+<<<<<<< HEAD
       - Audio file (WAV format on Linux)
+=======
+      - Audio file (MP3 format on Windows/Mac, WAV on Linux)
+>>>>>>> 32052ba (pushed the missing files)
     
     Latency: ~0.5-2s for typical sentence (very fast - uses system TTS)
     """
     if TTS_ENGINE is None:
+<<<<<<< HEAD
         logger.error("TTS engine is None - initialization failed")
+=======
+>>>>>>> 32052ba (pushed the missing files)
         raise HTTPException(status_code=503, detail="TTS engine not initialized")
     
     try:
@@ -302,12 +328,17 @@ async def synthesize(request: SynthesizeRequest):
             raise HTTPException(status_code=400, detail="Text cannot be empty")
         
         # Create temp file for output
+<<<<<<< HEAD
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+=======
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+>>>>>>> 32052ba (pushed the missing files)
             tmp_path = tmp.name
         
         try:
             # pyttsx3 is not thread-safe; serialize calls and offload blocking work.
             async with TTS_LOCK:
+<<<<<<< HEAD
                 logger.info(f"Calling TTS synthesis to file: {tmp_path}")
                 await asyncio.to_thread(_synthesize_to_file_blocking, request.text, tmp_path)
             
@@ -334,6 +365,25 @@ async def synthesize(request: SynthesizeRequest):
         raise
     except Exception as e:
         logger.error(f"Synthesis error: {type(e).__name__}: {e}", exc_info=True)
+=======
+                await asyncio.to_thread(_synthesize_to_file_blocking, request.text, tmp_path)
+            
+            # Return audio file
+            return FileResponse(
+                tmp_path,
+                media_type="audio/mpeg",
+                filename="response.mp3",
+                headers={"Content-Disposition": "inline; filename=response.mp3"},
+            )
+        except Exception:
+            # Clean up on error
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+            raise
+    
+    except Exception as e:
+        logger.error(f"Synthesis error: {e}")
+>>>>>>> 32052ba (pushed the missing files)
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
 
 

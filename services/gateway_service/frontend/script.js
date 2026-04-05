@@ -19,6 +19,10 @@ let currentBotMessage = null;
 let currentBotMessageTtsTriggered = false;  // Track if TTS already triggered for this response
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
+<<<<<<< HEAD
+=======
+let responseInProgress = false;
+>>>>>>> 32052ba (pushed the missing files)
 
 // Voice recording state
 let mediaRecorder = null;
@@ -56,6 +60,11 @@ function connectWebSocket() {
     socket.onmessage = function (event) {
         if (event.data === "[END]") {
             hideTyping();
+<<<<<<< HEAD
+=======
+            setChatControlsDisabled(false);
+            responseInProgress = false;
+>>>>>>> 32052ba (pushed the missing files)
             // Generate audio for complete response (Option 3)
             if (currentBotMessage && currentBotMessage.textContent.trim().length > 0) {
                 console.log("[TTS] Response complete [END], generating full audio...");
@@ -69,6 +78,11 @@ function connectWebSocket() {
         // Handle error messages from the gateway
         if (event.data.startsWith("[ERROR]")) {
             hideTyping();
+<<<<<<< HEAD
+=======
+            setChatControlsDisabled(false);
+            responseInProgress = false;
+>>>>>>> 32052ba (pushed the missing files)
             if (!currentBotMessage) {
                 currentBotMessage = appendMessage("", "bot");
             }
@@ -89,6 +103,12 @@ function connectWebSocket() {
 
     socket.onclose = function (event) {
         console.log("WebSocket closed:", event.code, event.reason);
+<<<<<<< HEAD
+=======
+        if (!responseInProgress) {
+            setChatControlsDisabled(false);
+        }
+>>>>>>> 32052ba (pushed the missing files)
         // Auto-reconnect with exponential backoff
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts++;
@@ -113,7 +133,11 @@ ws = connectWebSocket();
 function sendMessage() {
     const input = document.getElementById("message-input");
     const message = input.value.trim();
+<<<<<<< HEAD
     if (!message) return;
+=======
+    if (!message || responseInProgress) return;
+>>>>>>> 32052ba (pushed the missing files)
 
     // Reconnect if needed
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -125,6 +149,11 @@ function sendMessage() {
 
     appendMessage(message, "user");
     showTyping();
+<<<<<<< HEAD
+=======
+    responseInProgress = true;
+    setChatControlsDisabled(true);
+>>>>>>> 32052ba (pushed the missing files)
 
     ws.send(JSON.stringify({
         session_id: sessionId,
@@ -134,6 +163,23 @@ function sendMessage() {
     input.value = "";
 }
 
+<<<<<<< HEAD
+=======
+function setChatControlsDisabled(disabled) {
+    const input = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+    const voiceBtn = document.getElementById("voice-btn");
+    const newBtn = document.getElementById("new-btn");
+
+    input.disabled = disabled;
+    sendBtn.disabled = disabled;
+    voiceBtn.disabled = disabled;
+    if (newBtn) {
+        newBtn.disabled = false;
+    }
+}
+
+>>>>>>> 32052ba (pushed the missing files)
 function appendMessage(text, sender) {
     const chatBox = document.getElementById("chat-box");
 
@@ -164,6 +210,11 @@ function resetSession() {
     sessionId = generateSessionId();
     document.getElementById("chat-box").innerHTML = "";
     currentBotMessage = null;
+<<<<<<< HEAD
+=======
+    responseInProgress = false;
+    setChatControlsDisabled(false);
+>>>>>>> 32052ba (pushed the missing files)
     // Reconnect WebSocket for clean state
     if (ws) ws.close();
     ws = connectWebSocket();
@@ -174,6 +225,10 @@ function resetSession() {
    ────────────────────────────────────────────────────────────────── */
 
 async function toggleVoiceRecording() {
+<<<<<<< HEAD
+=======
+    if (responseInProgress) return;
+>>>>>>> 32052ba (pushed the missing files)
     if (isRecording) {
         stopVoiceRecording();
     } else {
@@ -183,6 +238,10 @@ async function toggleVoiceRecording() {
 
 async function startVoiceRecording() {
     try {
+<<<<<<< HEAD
+=======
+        if (responseInProgress) return;
+>>>>>>> 32052ba (pushed the missing files)
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioChunks = [];
         
@@ -331,6 +390,10 @@ function stopVoiceRecording() {
 
 async function transcribeAndSend(audioBlob, audioFormat = "wav") {
     try {
+<<<<<<< HEAD
+=======
+        if (responseInProgress) return;
+>>>>>>> 32052ba (pushed the missing files)
         showTyping();
         
         console.log(`[Voice] Recording complete. Format: ${audioFormat}, Size: ${(audioBlob.size / 1024).toFixed(2)}KB`);

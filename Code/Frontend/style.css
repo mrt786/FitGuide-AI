@@ -97,4 +97,13 @@ button {
 
 button:hover {
     background: #1e40af;
+<<<<<<< HEAD
+=======
+}
+
+button:disabled,
+input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+>>>>>>> 32052ba (pushed the missing files)
 }

@@ -61,6 +61,7 @@ async def run_test():
             if not response:
                 raise AssertionError(f"Empty response at turn {i}")
 
+<<<<<<< HEAD
         # Allow async summarization tasks to complete.
         await asyncio.sleep(1.5)
 
@@ -74,10 +75,48 @@ async def run_test():
 
         assert memory_count >= 2, f"Expected compressed memory, got {memory_count}"
         assert turns >= len(TEST_TURNS), f"Expected >= {len(TEST_TURNS)} turns, got {turns}"
+=======
+        # Allow async summarization tasks to complete and poll for persisted state.
+        session_info = {}
+        benchmark_info = {}
+        for _ in range(8):
+            await asyncio.sleep(1.0)
+
+            async with http_session.get(f"{BASE_URL}/session/{TEST_SESSION_ID}") as resp:
+                if resp.status == 200:
+                    session_info = await resp.json()
+
+            async with http_session.get(f"{BASE_URL}/benchmarks/{TEST_SESSION_ID}") as resp:
+                if resp.status == 200:
+                    benchmark_info = await resp.json()
+
+            if session_info and benchmark_info:
+                break
+
+        if not session_info:
+            raise AssertionError("Session state was not persisted")
+        if not benchmark_info:
+            raise AssertionError("Benchmark data was not persisted")
+
+        memory_count = session_info.get("memory_count", 0)
+        turns = benchmark_info.get("turns", 0)
+        profile = session_info.get("profile", {})
+
+        assert memory_count >= 2, f"Expected compressed memory, got {memory_count}"
+        assert turns >= len(TEST_TURNS), f"Expected >= {len(TEST_TURNS)} turns, got {turns}"
+        assert profile.get("goal") == "build muscle", f"Expected goal to persist, got {profile.get('goal')}"
+        assert profile.get("age") == "22", f"Expected age to persist, got {profile.get('age')}"
+        assert profile.get("weight") is not None, "Expected weight to persist"
+        assert profile.get("injury") == "none", f"Expected injury to persist as none, got {profile.get('injury')}"
+>>>>>>> 32052ba (pushed the missing files)
 
         duration = (time.perf_counter() - start) * 1000.0
         print("Test passed")
         print(f"Recent history count: {session_info.get('recent_history_count')}")
+<<<<<<< HEAD
+=======
+        print(f"Profile: {profile}")
+>>>>>>> 32052ba (pushed the missing files)
         print(f"Memory count: {memory_count}")
         print(f"Avg TTFT ms: {benchmark_info.get('avg_ttft_ms')}")
         print(f"Avg total latency ms: {benchmark_info.get('avg_total_latency_ms')}")
