@@ -1,9 +1,6 @@
 from typing import Dict, List
 from ollama_client import generate_stream
-<<<<<<< HEAD
-=======
 import re
->>>>>>> 32052ba (pushed the missing files)
 
 
 class ConversationManager:
@@ -11,14 +8,10 @@ class ConversationManager:
         # session_id → session data
         self.sessions: Dict[str, Dict] = {}
 
-<<<<<<< HEAD
-=======
     PROFILE_UPDATE_PATTERN = re.compile(
         r"\[PROFILE_UPDATE:\s*([^]]+)\]",
         re.IGNORECASE,
     )
-
->>>>>>> 32052ba (pushed the missing files)
     def create_session(self, session_id: str):
         if session_id not in self.sessions:
             self.sessions[session_id] = {
@@ -36,8 +29,6 @@ class ConversationManager:
         if session_id in self.sessions:
             self.sessions[session_id]["profile"][key] = value
 
-<<<<<<< HEAD
-=======
     def extract_and_update_profile(self, session_id: str, assistant_message: str) -> str:
         """Extract profile updates from assistant message and update session profile."""
         session = self.sessions.get(session_id)
@@ -75,8 +66,6 @@ class ConversationManager:
             return cleaned_message
 
         return assistant_message
-
->>>>>>> 32052ba (pushed the missing files)
     def add_to_history(self, session_id: str, role: str, content: str):
         self.sessions[session_id]["history"].append({
             "role": role,
@@ -101,9 +90,6 @@ Rules:
 - Provide structured workout plans (sets, reps, rest).
 - Do NOT give medical advice.
 - If injury is mentioned, suggest consulting a doctor.
-<<<<<<< HEAD
-- Keep answers concise but helpful.
-=======
 
 Profile extraction policy:
 - Actively extract user profile information from conversation.
@@ -111,7 +97,6 @@ Profile extraction policy:
   [PROFILE_UPDATE: key=value, key2=value2]
 - Extract: goal, experience, age, weight, injury
 - Examples: [PROFILE_UPDATE: age=25, weight=75kg, goal=build muscle]
->>>>>>> 32052ba (pushed the missing files)
 """
 
         profile_section = f"""
@@ -150,12 +135,8 @@ Injury: {profile['injury']}
             full_response += token
             yield token
 
-<<<<<<< HEAD
-        self.add_to_history(session_id, "assistant", full_response)
-=======
         # Extract and apply any profile updates from the response
         cleaned_response = self.extract_and_update_profile(session_id, full_response)
 
         # Save the cleaned response (without profile update markers) to history
         self.add_to_history(session_id, "assistant", cleaned_response)
->>>>>>> 32052ba (pushed the missing files)

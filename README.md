@@ -26,11 +26,7 @@ FitGuide AI is a conversational gym coaching assistant powered by a local LLM (P
 
 **Why three services?**
 - **Gateway Service** — Single entry point; handles WebSocket upgrades, serves frontend, can add auth/rate-limiting without touching business logic.
-<<<<<<< HEAD
-- **Conversation Service** — Owns session state, prompt templates, history management. Can evolve independently (e.g., swap to Redis-backed sessions).
-=======
 - **Conversation Service** — Owns prompt templates, history orchestration, and policy logic while persisting state in Redis.
->>>>>>> 32052ba (pushed the missing files)
 - **LLM Service** — Thin wrapper around Ollama. Can be independently scaled or swapped for vLLM/llama.cpp without changing upstream services.
 
 ---
@@ -519,15 +515,9 @@ Import `postman_collection.json` into Postman to test all endpoints:
 
 - **Async everywhere**: All HTTP calls between services use `aiohttp` (non-blocking). The event loop is never blocked, so the server handles many concurrent WebSocket users.
 - **Streaming end-to-end**: Tokens stream from Ollama → LLM Service → Conversation Service → Gateway → Browser. No buffering — first-token latency is as low as Ollama allows.
-<<<<<<< HEAD
-- **Sliding window history**: Only the last 8 messages are kept per session to fit within small model context windows (~4K tokens for phi3).
-- **Graceful degradation**: Health checks cascade through all services. Frontend auto-reconnects on WebSocket drops with exponential backoff.
-- **Stateless-friendly**: Session state is in-memory but isolated to the conversation service. Swapping to Redis requires changes in only one service.
-=======
 - **Sliding window history**: Only the last 6 messages are kept verbatim per session to fit small-model context windows.
 - **Graceful degradation**: Health checks cascade through all services. Frontend auto-reconnects on WebSocket drops with exponential backoff.
 - **Stateless backend**: Session/profile/memory and benchmark state are persisted in Redis, so service restarts do not lose conversation state.
->>>>>>> 32052ba (pushed the missing files)
 
 ---
 
@@ -563,11 +553,7 @@ For assignment context, see [VOICE_SETUP_GUIDE.md](VOICE_SETUP_GUIDE.md) for ful
 
 ## Known Limitations
 
-<<<<<<< HEAD
-- Session data is in-memory (lost on container restart). Production would use Redis.
-=======
 - Redis must be running and reachable by the conversation service.
->>>>>>> 32052ba (pushed the missing files)
 - No authentication or rate limiting (would be added to the gateway in production).
 - Ollama must run on the host — not containerized — for direct CPU/GPU access.
 - Context window is limited to 8 messages due to small model constraints.

@@ -230,8 +230,6 @@ async def websocket_chat(websocket: WebSocket):
     active_connections[connection_id] = websocket
     logger.info(f"WebSocket connected: {connection_id} (total: {len(active_connections)})")
 
-<<<<<<< HEAD
-=======
     response_in_progress = False
     send_lock = asyncio.Lock()
     current_response_task: asyncio.Task | None = None
@@ -283,69 +281,20 @@ async def websocket_chat(websocket: WebSocket):
             response_in_progress = False
             await safe_send("[END]")
 
->>>>>>> 32052ba (pushed the missing files)
     try:
         while True:
             # ── Receive client message ──
             try:
                 data = await websocket.receive_json()
             except json.JSONDecodeError:
-<<<<<<< HEAD
-                await websocket.send_text("[ERROR] Invalid JSON")
-                await websocket.send_text("[END]")
-=======
                 await safe_send("[ERROR] Invalid JSON")
                 await safe_send("[END]")
->>>>>>> 32052ba (pushed the missing files)
                 continue
 
             user_message = data.get("message", "").strip()
             session_id = data.get("session_id", connection_id)
 
             if not user_message:
-<<<<<<< HEAD
-                await websocket.send_text("[END]")
-                continue
-
-            # ── Forward to Conversation Service ──
-            try:
-                async with aiohttp.ClientSession() as http_session:
-                    async with http_session.post(
-                        f"{CONVERSATION_SERVICE_URL}/chat",
-                        json={"session_id": session_id, "message": user_message},
-                        timeout=aiohttp.ClientTimeout(total=300),
-                    ) as resp:
-                        if resp.status != 200:
-                            error_text = await resp.text()
-                            logger.error(f"Conversation service error: {resp.status}")
-                            await websocket.send_text(f"[ERROR] Service error: {resp.status}")
-                            await websocket.send_text("[END]")
-                            continue
-
-                        # Stream tokens to the WebSocket client
-                        async for line in resp.content:
-                            if line:
-                                try:
-                                    chunk = json.loads(line.decode("utf-8"))
-                                    if "token" in chunk:
-                                        await websocket.send_text(chunk["token"])
-                                    if "error" in chunk:
-                                        await websocket.send_text(f"[ERROR] {chunk['error']}")
-                                    if chunk.get("done"):
-                                        break
-                                except json.JSONDecodeError:
-                                    continue
-
-            except aiohttp.ClientError as e:
-                logger.error(f"Cannot reach conversation service: {e}")
-                await websocket.send_text("[ERROR] Service unavailable")
-            except asyncio.TimeoutError:
-                logger.error("Conversation service timed out")
-                await websocket.send_text("[ERROR] Request timed out")
-
-            # Signal end of response
-            await websocket.send_text("[END]")
-=======
                 await safe_send("[END]")
                 continue
 
@@ -358,7 +307,6 @@ async def websocket_chat(websocket: WebSocket):
             current_response_task = asyncio.create_task(
                 process_user_message(session_id=session_id, user_message=user_message)
             )
->>>>>>> 32052ba (pushed the missing files)
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {connection_id}")
@@ -369,15 +317,12 @@ async def websocket_chat(websocket: WebSocket):
         except Exception:
             pass
     finally:
-<<<<<<< HEAD
-=======
         if current_response_task and not current_response_task.done():
             current_response_task.cancel()
             try:
                 await current_response_task
             except asyncio.CancelledError:
                 pass
->>>>>>> 32052ba (pushed the missing files)
         active_connections.pop(connection_id, None)
         logger.info(f"Connection cleaned up: {connection_id} (total: {len(active_connections)})")
 
